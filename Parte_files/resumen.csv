@@ -1,0 +1,23 @@
+,,PARTE DOMINGO
+,,,Comida,Cena,Desayuno (mañana) ,Comida (mañana)
+,,Normales,10,16,17
+,sl,Sin lactosa,2,2
+,d,Dieta,1,1,1
+,#ERROR! (Formula parse error.),Enfermo
+,e,Blando
+,,,Fiambreras y bocadillos a preparar 
+,,,Comida,Cena,Desayuno (mañana) ,Comida (mañana)
+,,Fiambreras,,,,1
+,f,Bocadillos
+,,Bocadillos dieta
+
+,,,Desglose por pisos
+,,,,,,(Preparar)
+,,,Comida,Cena,Desayuno (mañana) ,Comida (mañana)
+,,TU,6 Normales + 1 Dieta,6 Normales + 1 Dieta,6 Normales + 1 Dieta
+,,TB,2 Normales + 1 Sin lactosa,5 Normales + 1 Sin lactosa,6 Normales
+,,AF2,1 Normales + 1 Sin lactosa,3 Normales + 1 Sin lactosa,3 Normales,1 Fiambreras
+,,AF3,1 Normales,2 Normales,2 Normales
+
+,,,Consolidado Alejandro Ferrant
+,,AF2 + AF3,2 Normales + 1 Sin lactosa,5 Normales + 1 Sin lactosa,5 Normales,1 Fiambreras
