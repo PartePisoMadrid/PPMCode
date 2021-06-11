@@ -11,8 +11,6 @@ def gsheet2csv(filespath, gsheetURL, sheetNumber, csvFileName):
     gsheets = Sheets.from_files(filespath+'client_secrets.json', filespath+'storage.json')
     sheet = gsheets.get(gsheetURL) #get sheet in a SpreadSheet object
     sheet.sheets[sheetNumber].to_csv(csvFileName, encoding='utf-8', dialect='excel') #to csv
-    #rootPath = Path("./")
-    #os.rename(rootPath/csvFileName, rootPath/folderToMove/csvFileName) #move to pathToMove
     return sheet
 
 def csv2excel(csvFileName, excelFileName, sheetName):
@@ -23,7 +21,4 @@ def csv2excel(csvFileName, excelFileName, sheetName):
     writer = pd.ExcelWriter(excelFileName,engine='xlsxwriter') # specify a writer
     df.to_excel(writer, sheetName) # write your DataFrame to a file
     writer.save() # save the result
-    #rootPath = Path("../")
-    #os.rename(rootPath/excelFileName, rootPath/folderToMove/excelFileName) #move to pathToMove
-
     return df
