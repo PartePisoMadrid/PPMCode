@@ -1,6 +1,5 @@
 from __future__ import print_function
 import os.path
-from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -27,12 +26,10 @@ def login(scopes, credentialsPath):
             token.write(creds.to_json())
     return creds
 
-def printFirstFiles(creds, n):
+def printFirstFiles(service, n):
     """
     Prints the names and ids of the first n files the user has access to.
     """
-    service = build('drive', 'v3', credentials=creds)
-
     # Call the Drive v3 API
     results = service.files().list(
         pageSize=n, fields="nextPageToken, files(id, name)").execute()
@@ -60,24 +57,11 @@ def title2ids(service, fileName):
             ids += [item['id']]
         return ids
 
-
-def writeCellGSheet(service, cellvalue, spreadsheet_id, worksheet_name, cell_range_insert, value_input_option):
+def giveAccess(service, fileId, type, emailAddress=None):
     """
-    update a given cell of a worksheet with a given value
+    give privileges to edit fileId
     """
-    values = [
-    [
-        # Cell values ...
-        cellvalue,
-    ],
-        # Additional rows ...
-    ]
-    body = {
-        'values': values
-    }
-    range_name = worksheet_name + "!" + cell_range_insert
-    result = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id, range=range_name,
-        valueInputOption=value_input_option, body=body).execute()
-    print('{0} cells updated.'.format(result.get('updatedCells')))
-
+    user_permission = ({'type': type,
+                        'role': 'writer',
+                        'emailAddress': emailAddress})
+    service.permissions().create(fileId=fileId,body=user_permission,fields='id').execute()

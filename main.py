@@ -6,13 +6,10 @@ Created on Fri Sep 11 09:59:29 2020
 
 @author: PartePisoMadrid
 """
-from __future__ import print_function
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 
 from utils.google_apis import gDrive
+from utils.google_apis import gSheets
 from utils.FileConvert import gsheet2csv
 from utils.FileConvert import csv2excel
 from utils.TKinterTools import writeWithTKinter
@@ -96,38 +93,39 @@ def createNextParte():
     print("Creating new Parte...")
     creds = gDrive.login(SCOPES, CREDENTIALS_PATH+"client_secrets.json")
     # call the Drive v3 API
-    service = build('drive', 'v3', credentials=creds)
+    gDriveService = build('drive', 'v3', credentials=creds)
     # copy the template file
-    service.files().copy(fileId=FILE_ID,
+    gDriveService.files().copy(fileId=FILE_ID,
                 body={"parents": [{"kind": "drive#fileLink", "id": FOLDER_ID}]}).execute()
     # get id from copy
-    ids = gDrive.title2ids(service, "Copia de Parte_Coronavirus")
+    ids = gDrive.title2ids(gDriveService, "Copia de Parte_Coronavirus")
     if len(ids)!=1:
         raise Exception("There must be a unique ID associated to the name specified")
     # rename copy with date of next monday
     now = datetime.datetime.now()
     monday = now + datetime.timedelta(days = 7-now.weekday())
     copyTitle = "Semana "+str(monday.day)+" de "+ SPANISH_MONTH[monday.month]
-    service.files().update(fileId=ids[0], body={"name":copyTitle}).execute()
+    gDriveService.files().update(fileId=ids[0], body={"name":copyTitle}).execute()
     # call the GSheets v4 API
-    service = build('sheets', 'v4', credentials=creds)
+    gSheetService = build('sheets', 'v4', credentials=creds)
     # modify copy by changing the dates
     dateToInsert = str(monday.day)+"/"+str(now.month)+"/"+str(now.year)
-    gDrive.writeCellGSheet(service, dateToInsert, ids[0], "Parte", "E3:G3", "USER_ENTERED")
+    gSheets.writeCell(gSheetService, dateToInsert, ids[0], "Parte", "E3:G3", "USER_ENTERED")
+    # give writer privileges to anyone with the link
+    gDrive.giveAccess(gDriveService, ids[0], "anyone")
     print("Parte called '"+copyTitle+"' has been successfully created")
 
 
 def main():
-    # if it is monday
     reviseWeekDay = datetime.datetime.today().weekday()
     if reviseWeekDay==0:
         #update Parte url
         ff = open("Parte_files/url_parte.txt", "w")
         writeWithTKinter(ff, 'Copy here the new Parte url')
         # create next week Parte
-        createNextParte()
+        createNextParte()  
     # download and print Parte
-    #printParte()
+    printParte()
     
 
 if __name__ == '__main__':
