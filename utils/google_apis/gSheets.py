@@ -1,14 +1,14 @@
 
 def writeCell(service, cellvalue, spreadsheet_id, worksheet_name, cell_range_insert, value_input_option):
     """
-    update a given cell of a worksheet with a given value
+    Update a given cell of a worksheet with a given value
     """
     values = [
     [
-        # Cell values ...
+        # cell values ...
         cellvalue,
     ],
-        # Additional rows ...
+        # additional rows ...
     ]
     body = {
         'values': values

@@ -9,11 +9,11 @@ def login(scopes, credentialsPath):
     Signs in google asking for the needed permissions and store the credentials in a file.
     """
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
+    # the file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first time.
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', scopes)
-    # If there are no (valid) credentials available, let the user log in.
+    # if there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -30,7 +30,7 @@ def printFirstFiles(service, n):
     """
     Prints the names and ids of the first n files the user has access to.
     """
-    # Call the Drive v3 API
+    # call the Drive v3 API
     results = service.files().list(
         pageSize=n, fields="nextPageToken, files(id, name)").execute()
     items = results.get('files', [])
@@ -42,26 +42,26 @@ def printFirstFiles(service, n):
         for item in items:
             print(u'{0} ({1})'.format(item['name'], item['id']))
 
-def title2ids(service, fileName):
+def title2id(service, fileName):
     """
-    Gets the ids that correspond to a file name.
+    Gets the id that correspond to a file name.
     """
     results = service.files().list(q="name='"+fileName+"'",
         pageSize=10, fields="nextPageToken, files(id, name)").execute()
     items = results.get('files', [])
-    ids = []
-    if not items:
-        print('No files found.')
-    else:
-        for item in items:
-            ids += [item['id']]
-        return ids
+    if len(items)==0:
+        raise Exception("There are not files with the title "+fileName+" in the gDrive account")
+    if len(items)!=1:
+        raise Exception("There must not be more than one ID associated to the name specified")
+    return items[0]['id']
 
-def giveAccess(service, fileId, type, emailAddress=None):
+def giveAccess(service, fileId, type, emailAddress=None, emailMessage=None):
     """
     give privileges to edit fileId
     """
-    user_permission = ({'type': type,
+    user_permission = ({
+                        'type': type,
                         'role': 'writer',
-                        'emailAddress': emailAddress})
-    service.permissions().create(fileId=fileId,body=user_permission,fields='id').execute()
+                        'emailAddress': emailAddress,
+                        })
+    service.permissions().create(fileId=fileId,body=user_permission,fields='id', emailMessage=emailMessage).execute()

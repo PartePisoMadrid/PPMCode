@@ -21,12 +21,14 @@ import pandas as pd
 import datetime
 import subprocess, sys
 import os
+import re
 
 ## CONSTANTS
 # if modifying these scopes, delete the file token.json
 SCOPES = ['https://www.googleapis.com/auth/drive']
-# change this path as appropriate
+# change these paths as appropriate
 CREDENTIALS_PATH = '/home/ebotiab/Desktop/parte/credentials/'
+CONTACTS_PATH = '/home/ebotiab/Desktop/parte/mycontacts.txt'
 # template Parte ID
 FILE_ID = "1KKsoosB88DlOIHgBkd4K9iQxbPeUvWmvB_u9RhuJ2N8"
 # ID of the folder where new Parte will be located if needed
@@ -35,6 +37,9 @@ FOLDER_ID = "1xYJf9E9oRs3cvtdSNFLo3qolo8438lR4"
 SPANISH_MONTH = {1:"enero", 2:"febrero", 3:"marzo", 4:"abril", 5:"mayo", 6:"junio", 7:"julio", 8:"agosto", 9:"septiembre", 10:"octubre",11:"noviembre", 12:"diciembre"}
 
 def printParte():
+    """
+    Downloads and prints today's Parte
+    """
     fileToRead = open("Parte_files/url_parte.txt", "r")
     parteUrl = fileToRead.read()
     fileToRead.close()
@@ -75,20 +80,20 @@ def printParte():
                 sheet_to_write.cell(row_write,col).value = value
             print('row: '+str(row_read)+' col: '+str(col)+' value: '+str(sheet_to_read.cell(row_read,col).value))
     
-    #save the changes in other xlsx file
+    # save the changes in other xlsx file
     sheet_to_write.cell(1,3).value = weekDay
     wb_to_write.save("Parte_files/RESUMEN_IMPRIMIBLE.xlsx")
     
     # convert excel to pdf
     os.system("soffice --headless --convert-to pdf Parte_files/RESUMEN_IMPRIMIBLE.xlsx")
-    #move to Parte_files folder
+    # move to Parte_files folder
     os.rename("RESUMEN_IMPRIMIBLE.pdf", "Parte_files/RESUMEN_IMPRIMIBLE.pdf") 
     # print pdf
-    os.system("lp Parte_files/RESUMEN_IMPRIMIBLE.pdf")
+    #os.system("lp Parte_files/RESUMEN_IMPRIMIBLE.pdf")
 
 def createNextParte():
     """
-    creates Parte for next week
+    Creates Parte for next week
     """
     print("Creating new Parte...")
     creds = gDrive.login(SCOPES, CREDENTIALS_PATH+"client_secrets.json")
@@ -98,35 +103,61 @@ def createNextParte():
     gDriveService.files().copy(fileId=FILE_ID,
                 body={"parents": [{"kind": "drive#fileLink", "id": FOLDER_ID}]}).execute()
     # get id from copy
-    ids = gDrive.title2ids(gDriveService, "Copia de Parte_Coronavirus")
-    if len(ids)!=1:
-        raise Exception("There must be a unique ID associated to the name specified")
+    copyID = gDrive.title2id(gDriveService, "Copia de Parte_Coronavirus")
     # rename copy with date of next monday
     now = datetime.datetime.now()
     monday = now + datetime.timedelta(days = 7-now.weekday())
     copyTitle = "Semana "+str(monday.day)+" de "+ SPANISH_MONTH[monday.month]
-    gDriveService.files().update(fileId=ids[0], body={"name":copyTitle}).execute()
+    gDriveService.files().update(fileId=copyID, body={"name":copyTitle}).execute()
     # call the GSheets v4 API
     gSheetService = build('sheets', 'v4', credentials=creds)
     # modify copy by changing the dates
     dateToInsert = str(monday.day)+"/"+str(now.month)+"/"+str(now.year)
-    gSheets.writeCell(gSheetService, dateToInsert, ids[0], "Parte", "E3:G3", "USER_ENTERED")
+    gSheets.writeCell(gSheetService, dateToInsert, copyID, "Parte", "E3:G3", "USER_ENTERED")
     # give writer privileges to anyone with the link
-    gDrive.giveAccess(gDriveService, ids[0], "anyone")
+    gDrive.giveAccess(gDriveService, copyID, "anyone")
     print("Parte called '"+copyTitle+"' has been successfully created")
 
+def getContacts():
+    """
+    Return list of names and mails from a text file with contacts
+    """
+    f = open(CONTACTS_PATH, "r")
+    contactNames = []
+    contactMails = []
+    for contact in f:
+        contactNames.append(contact.split()[0])
+        contactMails.append(contact.split()[1])
+    f.close()
+    return contactNames, contactMails
 
 def main():
     reviseWeekDay = datetime.datetime.today().weekday()
     if reviseWeekDay==0:
-        #update Parte url
+        # update Parte url
         ff = open("Parte_files/url_parte.txt", "w")
         writeWithTKinter(ff, 'Copy here the new Parte url')
         # create next week Parte
-        createNextParte()  
+        createNextParte()
+
     # download and print Parte
-    printParte()
-    
+    #printParte()
+
+    if reviseWeekDay==3:
+        creds = gDrive.login(SCOPES, CREDENTIALS_PATH+"client_secrets.json")
+        gDriveService = build('drive', 'v3', credentials=creds)
+        #get the ID of the next week Parte
+        nextMondayDate = datetime.datetime.now() + datetime.timedelta(days = 7-datetime.datetime.now().weekday())
+        nextParteTitle = "Semana "+str(nextMondayDate.day)+" de "+ SPANISH_MONTH[nextMondayDate.month]
+        nextParteID = gDrive.title2id(gDriveService, nextParteTitle)
+        # get the contacts
+        mailsList = getContacts()[1]
+        print(mailsList)
+        # share next Parte with the contacts (can be simplified by creating a Google Group)
+        emailMessage = "This is a test"
+        for mail in mailsList:
+            gDrive.giveAccess(gDriveService, nextParteID, "user", mail, emailMessage)
+
 
 if __name__ == '__main__':
 	main()
