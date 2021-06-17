@@ -8,11 +8,13 @@ Created on Fri Sep 11 09:59:29 2020
 """
 from googleapiclient.discovery import build
 
-from utils.google_apis import gDrive
-from utils.google_apis import gSheets
+from utils.google_apis import GLogin
+from utils.google_apis import GDrive
+from utils.google_apis import GSheets
+from utils.google_apis import GContacts
 from utils.FileConvert import gsheet2csv
 from utils.FileConvert import csv2excel
-from utils.TKinterTools import writeWithTKinter
+from utils import TKinterTools
 
 from openpyxl import load_workbook
 import smtplib
@@ -25,14 +27,19 @@ import re
 
 ## CONSTANTS
 # if modifying these scopes, delete the file token.json
-SCOPES = ['https://www.googleapis.com/auth/drive']
+SCOPES = ['https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/contacts']
 # change these paths as appropriate
 CREDENTIALS_PATH = '/home/ebotiab/Desktop/parte/credentials/'
 CONTACTS_PATH = '/home/ebotiab/Desktop/parte/mycontacts.txt'
+URL_FILE_PATH = "Parte_files/url_parte.txt"
+SHMESS_FILE_PATH = "Parte_files/sharing_parte_message.txt"
 # template Parte ID
 FILE_ID = "1KKsoosB88DlOIHgBkd4K9iQxbPeUvWmvB_u9RhuJ2N8"
 # ID of the folder where new Parte will be located if needed
 FOLDER_ID = "1xYJf9E9oRs3cvtdSNFLo3qolo8438lR4"
+# name of the group to which Partes will be shared
+#PISO_GROUP_NAME = "PisoMadrid2020-21"
+PISO_GROUP_NAME = "Verano2020-21"
 # mapping of month number to spanish month name
 SPANISH_MONTH = {1:"enero", 2:"febrero", 3:"marzo", 4:"abril", 5:"mayo", 6:"junio", 7:"julio", 8:"agosto", 9:"septiembre", 10:"octubre",11:"noviembre", 12:"diciembre"}
 
@@ -40,7 +47,7 @@ def printParte():
     """
     Downloads and prints today's Parte
     """
-    fileToRead = open("Parte_files/url_parte.txt", "r")
+    fileToRead = open(urlFilePath, "r")
     parteUrl = fileToRead.read()
     fileToRead.close()
 
@@ -89,21 +96,21 @@ def printParte():
     # move to Parte_files folder
     os.rename("RESUMEN_IMPRIMIBLE.pdf", "Parte_files/RESUMEN_IMPRIMIBLE.pdf") 
     # print pdf
-    #os.system("lp Parte_files/RESUMEN_IMPRIMIBLE.pdf")
+    os.system("lp Parte_files/RESUMEN_IMPRIMIBLE.pdf")
 
 def createNextParte():
     """
     Creates Parte for next week
     """
     print("Creating new Parte...")
-    creds = gDrive.login(SCOPES, CREDENTIALS_PATH+"client_secrets.json")
+    creds = GLogin.login(SCOPES, CREDENTIALS_PATH)
     # call the Drive v3 API
     gDriveService = build('drive', 'v3', credentials=creds)
     # copy the template file
     gDriveService.files().copy(fileId=FILE_ID,
                 body={"parents": [{"kind": "drive#fileLink", "id": FOLDER_ID}]}).execute()
     # get id from copy
-    copyID = gDrive.title2id(gDriveService, "Copia de Parte_Coronavirus")
+    copyID = GDrive.title2id(gDriveService, "Copia de Parte_Coronavirus")
     # rename copy with date of next monday
     now = datetime.datetime.now()
     monday = now + datetime.timedelta(days = 7-now.weekday())
@@ -113,30 +120,25 @@ def createNextParte():
     gSheetService = build('sheets', 'v4', credentials=creds)
     # modify copy by changing the dates
     dateToInsert = str(monday.day)+"/"+str(now.month)+"/"+str(now.year)
-    gSheets.writeCell(gSheetService, dateToInsert, copyID, "Parte", "E3:G3", "USER_ENTERED")
+    GSheets.writeCell(gSheetService, dateToInsert, copyID, "Parte", "E3:G3", "USER_ENTERED")
     # give writer privileges to anyone with the link
-    gDrive.giveAccess(gDriveService, copyID, "anyone")
+    GDrive.giveAccess(gDriveService, copyID, "anyone")
     print("Parte called '"+copyTitle+"' has been successfully created")
 
 def getContacts():
-    """
-    Return list of names and mails from a text file with contacts
-    """
-    f = open(CONTACTS_PATH, "r")
-    contactNames = []
-    contactMails = []
-    for contact in f:
-        contactNames.append(contact.split()[0])
-        contactMails.append(contact.split()[1])
-    f.close()
-    return contactNames, contactMails
+    # call the People v1 API
+    creds = GLogin.login(SCOPES, CREDENTIALS_PATH)
+    gContactsService = build('people', 'v1', credentials=creds)
+    # get needed id and length of contacts group specified with PISO_GROUP_NAME
+    pisoGroupID,pisoGroupLength = GContacts.getGroupData(gContactsService,PISO_GROUP_NAME,["resourceName","memberCount"])
+    # return names and mails of the Piso contacts
+    return GContacts.getContactsData(gContactsService, pisoGroupID, pisoGroupLength)
 
 def main():
     reviseWeekDay = datetime.datetime.today().weekday()
     if reviseWeekDay==0:
         # update Parte url
-        ff = open("Parte_files/url_parte.txt", "w")
-        writeWithTKinter(ff, 'Copy here the new Parte url')
+        TKinterTools.writeFile(URL_FILE_PATH, 'Copy here the new Parte url')
         # create next week Parte
         createNextParte()
 
@@ -144,20 +146,20 @@ def main():
     #printParte()
 
     if reviseWeekDay==3:
-        creds = gDrive.login(SCOPES, CREDENTIALS_PATH+"client_secrets.json")
+        creds = GLogin.login(SCOPES[0], CREDENTIALS_PATH)
         gDriveService = build('drive', 'v3', credentials=creds)
         #get the ID of the next week Parte
         nextMondayDate = datetime.datetime.now() + datetime.timedelta(days = 7-datetime.datetime.now().weekday())
-        nextParteTitle = "Semana "+str(nextMondayDate.day)+" de "+ SPANISH_MONTH[nextMondayDate.month]
-        nextParteID = gDrive.title2id(gDriveService, nextParteTitle)
+        nextParteTitle = "Semana "+str(nextMondayDate.day)+" "+ SPANISH_MONTH[nextMondayDate.month]
+        nextParteID = GDrive.title2id(gDriveService, nextParteTitle)
         # get the contacts
         mailsList = getContacts()[1]
-        print(mailsList)
         # share next Parte with the contacts (can be simplified by creating a Google Group)
-        emailMessage = "This is a test"
+        emailMessage = TKinterTools.writeFile(SHMESS_FILE_PATH, 'Enter the Parte sharing message', True)
         for mail in mailsList:
-            gDrive.giveAccess(gDriveService, nextParteID, "user", mail, emailMessage)
-
+            GDrive.giveAccess(gDriveService, nextParteID, "user", mail, emailMessage)
+        print("The Parte", nextParteTitle, "has been shared successfully with:")
+        print(", ".join(mailsList))
 
 if __name__ == '__main__':
 	main()

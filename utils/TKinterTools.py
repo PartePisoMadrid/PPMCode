@@ -1,19 +1,28 @@
 import tkinter as tk
 
-def writeWithTKinter(fileToWrite, buttonText):
+def writeFile(fileToWritePath, buttonText, isBigWindow=False):
 	"""
-    Write file with the text received as input from tkinter box
+    get input and write it in a file with the text received from tkinter box
     """
-	root= tk.Tk()
-	canvas1 = tk.Canvas(root, width = 400, height = 300)
+	ff = open(fileToWritePath, "w")
+	root = tk.Tk()
+	canvas1 = tk.Canvas(root, width = 800, height = 500)
 	canvas1.pack()
-	entry1 = tk.Entry(root)
-	canvas1.create_window(200, 140, window=entry1)
+	#entry1 = tk.Entry(root)
+	t = tk.Text(root, height=15, width=50, font=("Courier", 14))
+	t.pack()
+	canvas1.create_window(400, 150, window=t)
 	def getSquareRoot():
-		inputText = entry1.get()
-		fileToWrite.write(inputText)
-		cc = ff.close()
+		inputText = t.get("1.0", "end-1c")
+		ff.write(inputText)
+		ff.close()
 		root.destroy()
 	button1 = tk.Button(text=buttonText, command=getSquareRoot)
-	canvas1.create_window(200, 180, window=button1)
+	canvas1.create_window(410, 310, window=button1)
 	root.mainloop()
+	ff = open(fileToWritePath, "r")
+	inputText = ff.read()
+	print("inputText", inputText)
+	ff.close()
+	return inputText
+
