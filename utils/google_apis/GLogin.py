@@ -8,7 +8,7 @@ def login(scopes, credentialsPath):
     Signs in google asking for the needed permissions and store the credentials in a file.
     """
     creds = None
-    tokenPath = 'token.json'
+    tokenPath = credentialsPath+'token.json'
     clientSecretPath = credentialsPath+"client_secrets.json"
     # the file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first time.

@@ -1,13 +1,10 @@
 # PPM Software
 Software designed and used by Parte Piso de Madrid.
 
-To print the Parte it downloads a google sheet from a google drive account, convert it to a csv, and add their values into a excel file to be printed. When it is needed it can create the Parte for next week copying the Parte template in the google drive account and changing the cells that contains cells.
-
-## Share Parte (future project)
-This amis to share the Parte with a list of contacts with a message given.
+Print the Parte by downloading a Google Sheet from a Google Drive account, converting it to a csv, and adding its values to an Excel file for printing. When necessary, it create the Parte for the next week by copying a Parte template from the Google Drive account (changing the cells containing dates) and share with the Piso Conctacts using the Google People API.
 
 ## Send Mail (future project)
-This aims to send a mail to a list of contacts according to the data in the csv file.
+This aims to send an email to contacts who have not filled out the Parte reviewing the data in the Parte gsheet for the corresponding week.
 
 ## Face Recognition (future project)
 This aims to create a program that connects to a camera system and recognize a given set of faces. 
