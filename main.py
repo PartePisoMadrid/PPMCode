@@ -6,6 +6,7 @@ Created on Fri Sep 11 09:59:29 2020
 
 @author: PartePisoMadrid
 """
+from firebase import firebase
 from googleapiclient.discovery import build
 
 from utils.google_apis import GLogin
@@ -27,7 +28,7 @@ import re
 
 ## CONSTANTS
 # if modifying these scopes, delete the file token.json
-SCOPES = ['https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/contacts']
+SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/contacts.readonly']
 # change these paths as appropriate
 CREDENTIALS_PATH = '/home/ebotiab/Desktop/parte/credentials/'
 CONTACTS_PATH = '/home/ebotiab/Desktop/parte/mycontacts.txt'
@@ -42,6 +43,7 @@ FOLDER_ID = "1xYJf9E9oRs3cvtdSNFLo3qolo8438lR4"
 PISO_GROUP_NAME = "Verano2020-21"
 # mapping of month number to spanish month name
 SPANISH_MONTH = {1:"enero", 2:"febrero", 3:"marzo", 4:"abril", 5:"mayo", 6:"junio", 7:"julio", 8:"agosto", 9:"septiembre", 10:"octubre",11:"noviembre", 12:"diciembre"}
+GSHEET_URL_ROOT = "https://docs.google.com/spreadsheets/d/"
 
 def printParte():
     """
@@ -103,7 +105,7 @@ def createNextParte():
     Creates Parte for next week
     """
     print("Creating new Parte...")
-    creds = GLogin.login(SCOPES, CREDENTIALS_PATH)
+    creds = GLogin.login(SCOPES[0], CREDENTIALS_PATH)
     # call the Drive v3 API
     gDriveService = build('drive', 'v3', credentials=creds)
     # copy the template file
@@ -114,7 +116,7 @@ def createNextParte():
     # rename copy with date of next monday
     now = datetime.datetime.now()
     monday = now + datetime.timedelta(days = 7-now.weekday())
-    copyTitle = "Semana "+str(monday.day)+" de "+ SPANISH_MONTH[monday.month]
+    copyTitle = "Semana "+str(monday.day)+" "+ SPANISH_MONTH[monday.month]
     gDriveService.files().update(fileId=copyID, body={"name":copyTitle}).execute()
     # call the GSheets v4 API
     gSheetService = build('sheets', 'v4', credentials=creds)
@@ -123,7 +125,12 @@ def createNextParte():
     GSheets.writeCell(gSheetService, dateToInsert, copyID, "Parte", "E3:G3", "USER_ENTERED")
     # give writer privileges to anyone with the link
     GDrive.giveAccess(gDriveService, copyID, "anyone")
-    print("Parte called '"+copyTitle+"' has been successfully created")
+    # load Firebase
+    fb = firebase.FirebaseApplication("https://wixquickstart-default-rtdb.firebaseio.com/", None)
+    # upload the Parte url to Firebase
+    postAddress = fb.post('/covid/'+copyTitle, {"url": GSHEET_URL_ROOT+copyID})
+    print("Parte called '"+copyTitle+"' has been successfully created and uploaded to Firebase")
+
 
 def getContacts():
     # call the People v1 API
@@ -137,14 +144,12 @@ def getContacts():
 def main():
     reviseWeekDay = datetime.datetime.today().weekday()
     if reviseWeekDay==0:
-        # update Parte url
-        TKinterTools.writeFile(URL_FILE_PATH, 'Copy here the new Parte url')
         # create next week Parte
         createNextParte()
 
     # download and print Parte
     #printParte()
-
+    
     if reviseWeekDay==3:
         creds = GLogin.login(SCOPES[0], CREDENTIALS_PATH)
         gDriveService = build('drive', 'v3', credentials=creds)
@@ -157,7 +162,10 @@ def main():
         # share next Parte with the contacts (can be simplified by creating a Google Group)
         emailMessage = TKinterTools.writeFile(SHMESS_FILE_PATH, 'Enter the Parte sharing message', True)
         for mail in mailsList:
-            GDrive.giveAccess(gDriveService, nextParteID, "user", mail, emailMessage)
+            try:
+                GDrive.giveAccess(gDriveService, nextParteID, "user", mail, emailMessage)
+            except:
+                print("Failed to share Parte with:", mail)
         print("The Parte", nextParteTitle, "has been shared successfully with:")
         print(", ".join(mailsList))
 
